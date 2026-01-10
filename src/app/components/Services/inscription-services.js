@@ -1,4 +1,3 @@
-// services/inscription-services.js
 import axios from "./axios";
 
 const InscriptionService = {
@@ -12,7 +11,6 @@ const InscriptionService = {
   },
 
   // 🔹 ADMIN : changer le statut (VALIDEE / REFUSEE / EN_ATTENTE)
-  // PUT /api/inscriptions/{id}/statut?statut=VALIDEE
   changerStatut: (inscriptionId, statut) => {
     return axios.put(`/inscriptions/${inscriptionId}/statut`, null, {
       params: { statut }
@@ -29,10 +27,14 @@ const InscriptionService = {
     return axios.get(`/inscriptions/etudiant/${etudiantId}`);
   },
 
-  // 🔹 ADMIN : Lister toutes les inscriptions avec pagination
-  getAllPaginated: (page = 0, size = 12) => {
+  // 🔹 ADMIN : Lister toutes les inscriptions avec pagination + filtres
+  getAllPaginated: (page = 0, size = 12, filters = {}) => {
     return axios.get("/inscriptions", {
-      params: { page, size }
+      params: {
+        page,
+        size,
+        ...filters
+      }
     });
   }
 };

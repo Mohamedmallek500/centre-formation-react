@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Inscription, Etudiant } from '../../types';
+import { Inscription, Etudiant, StatutInscription } from '../../types';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthService from '../Services/authservices';
@@ -18,6 +18,9 @@ export function EtudiantsManager() {
   // =========================
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [groupeFilter, setGroupeFilter] = useState('');
+  const [statutFilter, setStatutFilter] = useState<StatutInscription | ''>('');
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEtudiant, setEditingEtudiant] = useState<Etudiant | null>(null);
 
@@ -32,17 +35,22 @@ export function EtudiantsManager() {
   });
 
   // =========================
-  // CHARGER LES ÉTUDIANTS (via Inscriptions paginées)
+  // CHARGER LES INSCRIPTIONS (API filtrée)
   // =========================
   useEffect(() => {
     fetchEtudiants(page);
-  }, [page]);
+  }, [page, searchTerm, groupeFilter, statutFilter]);
 
   const fetchEtudiants = async (pageNumber = 0) => {
     try {
-      const res = await InscriptionService.getAllPaginated(pageNumber, 12);
+      const filters: any = {};
 
-      // res.data = Page<Inscription>
+      if (searchTerm) filters.etudiant = searchTerm;
+      if (groupeFilter) filters.groupe = groupeFilter;
+      if (statutFilter) filters.statut = statutFilter;
+
+      const res = await InscriptionService.getAllPaginated(pageNumber, 12, filters);
+
       setInscriptions(res.data.content);
       setTotalPages(res.data.totalPages);
       setPage(res.data.number);
@@ -52,20 +60,6 @@ export function EtudiantsManager() {
       toast.error("Erreur lors du chargement des étudiants");
     }
   };
-
-  // =========================
-  // FILTRAGE (sur l'étudiant)
-  // =========================
-  const filteredInscriptions = inscriptions.filter((inscription) => {
-    const etudiant = inscription.etudiant;
-
-    return (
-      etudiant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      etudiant.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      etudiant.matricule?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      etudiant.email.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  });
 
   // =========================
   // SUBMIT (CREATE)
@@ -131,7 +125,6 @@ export function EtudiantsManager() {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cet étudiant ?")) return;
 
     try {
-      // ⚠️ à adapter si tu as une vraie API DELETE étudiant
       toast.success("Étudiant supprimé");
       fetchEtudiants(page);
     } catch (err) {
@@ -225,17 +218,35 @@ export function EtudiantsManager() {
       </CardHeader>
 
       <CardContent>
-        {/* SEARCH */}
-        <div className="mb-4">
+
+        {/* FILTRES */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
-              placeholder="Rechercher un étudiant..."
+              placeholder="Nom ou prénom étudiant..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
+
+          <Input
+            placeholder="Nom du groupe..."
+            value={groupeFilter}
+            onChange={(e) => setGroupeFilter(e.target.value)}
+          />
+
+          <select
+            className="border rounded px-3 py-2"
+            value={statutFilter}
+            onChange={(e) => setStatutFilter(e.target.value as any)}
+          >
+            <option value="">Tous les statuts</option>
+            <option value="EN_ATTENTE">EN_ATTENTE</option>
+            <option value="VALIDEE">VALIDEE</option>
+            <option value="REFUSEE">REFUSEE</option>
+          </select>
         </div>
 
         {/* TABLE */}
@@ -255,7 +266,7 @@ export function EtudiantsManager() {
             </TableHeader>
 
             <TableBody>
-              {filteredInscriptions.map((inscription) => {
+              {inscriptions.map((inscription) => {
                 const etudiant = inscription.etudiant;
                 return (
                   <TableRow key={inscription.id}>
@@ -308,7 +319,7 @@ export function EtudiantsManager() {
           </Button>
         </div>
 
-        {filteredInscriptions.length === 0 && (
+        {inscriptions.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             Aucun étudiant trouvé
           </div>
