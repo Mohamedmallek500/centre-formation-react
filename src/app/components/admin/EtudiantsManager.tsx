@@ -5,17 +5,24 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Etudiant } from '../../types';
+import { Inscription, Etudiant } from '../../types';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthService from '../Services/authservices';
-import axios from '../Services/axios'; // ton axios configuré avec cookies
+import InscriptionService from '../Services/inscription-services';
 
 export function EtudiantsManager() {
-  const [etudiants, setEtudiants] = useState<Etudiant[]>([]);
+
+  // =========================
+  // STATES
+  // =========================
+  const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEtudiant, setEditingEtudiant] = useState<Etudiant | null>(null);
+
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
 
   const [formData, setFormData] = useState({
     nom: '',
@@ -25,16 +32,21 @@ export function EtudiantsManager() {
   });
 
   // =========================
-  // CHARGER LES ÉTUDIANTS
+  // CHARGER LES ÉTUDIANTS (via Inscriptions paginées)
   // =========================
   useEffect(() => {
-    fetchEtudiants();
-  }, []);
+    fetchEtudiants(page);
+  }, [page]);
 
-  const fetchEtudiants = async () => {
+  const fetchEtudiants = async (pageNumber = 0) => {
     try {
-      const res = await axios.get('/test/etudiants');
-      setEtudiants(res.data);
+      const res = await InscriptionService.getAllPaginated(pageNumber, 12);
+
+      // res.data = Page<Inscription>
+      setInscriptions(res.data.content);
+      setTotalPages(res.data.totalPages);
+      setPage(res.data.number);
+
     } catch (err) {
       console.error(err);
       toast.error("Erreur lors du chargement des étudiants");
@@ -42,14 +54,18 @@ export function EtudiantsManager() {
   };
 
   // =========================
-  // FILTRAGE
+  // FILTRAGE (sur l'étudiant)
   // =========================
-  const filteredEtudiants = etudiants.filter(etudiant =>
-    etudiant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    etudiant.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    etudiant.matricule?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    etudiant.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredInscriptions = inscriptions.filter((inscription) => {
+    const etudiant = inscription.etudiant;
+
+    return (
+      etudiant.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      etudiant.prenom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      etudiant.matricule?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      etudiant.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   // =========================
   // SUBMIT (CREATE)
@@ -70,7 +86,7 @@ export function EtudiantsManager() {
         });
 
         toast.success("Étudiant ajouté avec succès");
-        fetchEtudiants();
+        fetchEtudiants(page);
       }
 
       resetForm();
@@ -115,9 +131,9 @@ export function EtudiantsManager() {
     if (!confirm("Êtes-vous sûr de vouloir supprimer cet étudiant ?")) return;
 
     try {
-      await axios.delete(`/test/etudiants/${id}`);
+      // ⚠️ à adapter si tu as une vraie API DELETE étudiant
       toast.success("Étudiant supprimé");
-      fetchEtudiants();
+      fetchEtudiants(page);
     } catch (err) {
       console.error(err);
       toast.error("Erreur lors de la suppression");
@@ -130,7 +146,7 @@ export function EtudiantsManager() {
         <div className="flex justify-between items-center">
           <div>
             <CardTitle>Gestion des Étudiants</CardTitle>
-            <CardDescription>Ajouter et consulter les étudiants</CardDescription>
+            <CardDescription>Liste des étudiants inscrits (via Inscriptions)</CardDescription>
           </div>
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -209,6 +225,7 @@ export function EtudiantsManager() {
       </CardHeader>
 
       <CardContent>
+        {/* SEARCH */}
         <div className="mb-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -221,6 +238,7 @@ export function EtudiantsManager() {
           </div>
         </div>
 
+        {/* TABLE */}
         <div className="rounded-md border overflow-x-auto">
           <Table>
             <TableHeader>
@@ -229,38 +247,68 @@ export function EtudiantsManager() {
                 <TableHead>Nom</TableHead>
                 <TableHead>Prénom</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Groupe</TableHead>
+                <TableHead>Statut</TableHead>
                 <TableHead>Date d'inscription</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
-              {filteredEtudiants.map((etudiant) => (
-                <TableRow key={etudiant.id}>
-                  <TableCell>{etudiant.matricule}</TableCell>
-                  <TableCell>{etudiant.nom}</TableCell>
-                  <TableCell>{etudiant.prenom}</TableCell>
-                  <TableCell>{etudiant.email}</TableCell>
-                  <TableCell>
-                    {new Date(etudiant.dateInscription).toLocaleDateString('fr-FR')}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button variant="ghost" size="sm" onClick={() => handleEdit(etudiant)}>
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(etudiant.id)}>
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredInscriptions.map((inscription) => {
+                const etudiant = inscription.etudiant;
+                return (
+                  <TableRow key={inscription.id}>
+                    <TableCell>{etudiant.matricule}</TableCell>
+                    <TableCell>{etudiant.nom}</TableCell>
+                    <TableCell>{etudiant.prenom}</TableCell>
+                    <TableCell>{etudiant.email}</TableCell>
+                    <TableCell>{inscription.groupe?.nom}</TableCell>
+                    <TableCell>{inscription.statut}</TableCell>
+                    <TableCell>
+                      {new Date(inscription.dateInscription).toLocaleDateString('fr-FR')}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleEdit(etudiant)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDelete(etudiant.id)}>
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
 
-        {filteredEtudiants.length === 0 && (
+        {/* PAGINATION */}
+        <div className="flex justify-center items-center space-x-4 mt-4">
+          <Button
+            variant="outline"
+            disabled={page === 0}
+            onClick={() => setPage(page - 1)}
+          >
+            Précédent
+          </Button>
+
+          <span className="text-sm">
+            Page {page + 1} / {totalPages}
+          </span>
+
+          <Button
+            variant="outline"
+            disabled={page === totalPages - 1}
+            onClick={() => setPage(page + 1)}
+          >
+            Suivant
+          </Button>
+        </div>
+
+        {filteredInscriptions.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             Aucun étudiant trouvé
           </div>

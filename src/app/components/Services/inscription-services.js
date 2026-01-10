@@ -27,6 +27,13 @@ const InscriptionService = {
   // 🔹 Lister les inscriptions d’un étudiant
   getByEtudiant: (etudiantId) => {
     return axios.get(`/inscriptions/etudiant/${etudiantId}`);
+  },
+
+  // 🔹 ADMIN : Lister toutes les inscriptions avec pagination
+  getAllPaginated: (page = 0, size = 12) => {
+    return axios.get("/inscriptions", {
+      params: { page, size }
+    });
   }
 };
 
