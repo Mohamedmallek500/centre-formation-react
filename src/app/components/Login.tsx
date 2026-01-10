@@ -34,7 +34,7 @@ export function Login() {
       // 🔁 Redirection selon le rôle
       const role = response.data.roles?.[0]; // ex: "ETUDIANT"
 
-      if (role === "ADMIN") navigate("/dashboardadmin/etudiants");
+      if (role === "ADMIN") navigate("/dashboardadmin/formateurs");
       else if (role === "FORMATEUR") navigate("/dashboardformateur");
       else if (role === "ETUDIANT") navigate("/dashboardetudiant");
       else navigate("/");

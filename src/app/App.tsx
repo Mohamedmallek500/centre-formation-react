@@ -9,6 +9,7 @@ import { EtudiantDashboard } from "./components/etudiant/EtudiantDashboard";
 import { EtudiantsManager } from "./components/admin/EtudiantsManager";
 import ProtectedRoutes from "./ProtectedRoutes";
 import { JSX } from "react";
+import { FormateursManager } from "./components/admin/FormateursManager";
 
 // 🔁 Redirection selon rôle
 function RoleRedirect() {
@@ -68,6 +69,15 @@ export default function App() {
                   </RequireRole>
                 }
               />
+
+              <Route
+  path="/dashboardadmin/formateurs"
+  element={
+    <RequireRole allowed={["ADMIN"]}>
+      <FormateursManager />
+    </RequireRole>
+  }
+/>
 
               {/* ================= FORMATEUR ================= */}
               <Route
