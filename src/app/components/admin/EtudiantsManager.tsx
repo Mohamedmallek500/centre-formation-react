@@ -5,18 +5,22 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
-import { Inscription, Etudiant, StatutInscription } from '../../types';
+import { Inscription, Etudiant, StatutInscription, Groupe } from '../../types';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthService from '../Services/authservices';
 import InscriptionService from '../Services/inscription-services';
+import GroupeService from '../Services/groupe-services';
 
 export function EtudiantsManager() {
+  
 
   // =========================
   // STATES
   // =========================
   const [inscriptions, setInscriptions] = useState<Inscription[]>([]);
+  const [groupes, setGroupes] = useState<Groupe[]>([]);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [groupeFilter, setGroupeFilter] = useState('');
   const [statutFilter, setStatutFilter] = useState<StatutInscription | ''>('');
@@ -35,6 +39,23 @@ export function EtudiantsManager() {
   });
 
   // =========================
+  // CHARGER LES GROUPES
+  // =========================
+  useEffect(() => {
+    fetchGroupes();
+  }, []);
+
+  const fetchGroupes = async () => {
+    try {
+      const res = await GroupeService.getAll();
+      setGroupes(res.data);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors du chargement des groupes");
+    }
+  };
+
+  // =========================
   // CHARGER LES INSCRIPTIONS (API filtrée)
   // =========================
   useEffect(() => {
@@ -46,7 +67,7 @@ export function EtudiantsManager() {
       const filters: any = {};
 
       if (searchTerm) filters.etudiant = searchTerm;
-      if (groupeFilter) filters.groupe = groupeFilter;
+      if (groupeFilter) filters.groupe = groupeFilter; // 🔥 nom du groupe sélectionné
       if (statutFilter) filters.statut = statutFilter;
 
       const res = await InscriptionService.getAllPaginated(pageNumber, 12, filters);
@@ -221,6 +242,7 @@ export function EtudiantsManager() {
 
         {/* FILTRES */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Recherche étudiant */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
@@ -231,12 +253,21 @@ export function EtudiantsManager() {
             />
           </div>
 
-          <Input
-            placeholder="Nom du groupe..."
+          {/* Filtre Groupe via API */}
+          <select
+            className="border rounded px-3 py-2"
             value={groupeFilter}
             onChange={(e) => setGroupeFilter(e.target.value)}
-          />
+          >
+            <option value="">Tous les groupes</option>
+            {groupes.map((groupe) => (
+              <option key={groupe.id} value={groupe.nom}>
+                {groupe.nom}
+              </option>
+            ))}
+          </select>
 
+          {/* Filtre Statut */}
           <select
             className="border rounded px-3 py-2"
             value={statutFilter}
