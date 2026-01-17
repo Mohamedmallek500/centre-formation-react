@@ -1,12 +1,15 @@
 // src/app/components/Layout.tsx
-import { Outlet } from "react-router-dom";
+import { Outlet, useNavigate } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { Button } from "./ui/button";
 import { LogOut, GraduationCap } from "lucide-react";
 import { Badge } from "./ui/badge";
+import { toast } from "sonner";
+import AuthService from "./Services/authservices";
 
 export function Layout() {
   const { state, logout } = useApp();
+  const navigate = useNavigate();
   const user = state.currentUser;
 
   if (!user) return null;
@@ -39,6 +42,21 @@ export function Layout() {
     }
   };
 
+  // =========================
+  // LOGOUT COMPLET (BACK + FRONT)
+  // =========================
+  const handleLogout = async () => {
+    try {
+      await AuthService.signout(); // 🔥 backend: /api/auth/signout
+    } catch (err) {
+      console.error("Erreur lors du logout serveur", err);
+    } finally {
+      logout();          // 🔥 vide le contexte
+      navigate("/");     // 🔥 retour login
+      toast.success("Déconnecté avec succès");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -68,7 +86,8 @@ export function Layout() {
                 </Badge>
               </div>
 
-              <Button variant="outline" size="sm" onClick={logout}>
+              {/* 🔥 BOUTON DÉCONNEXION */}
+              <Button variant="outline" size="sm" onClick={handleLogout}>
                 <LogOut className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Déconnexion</span>
               </Button>
@@ -79,7 +98,7 @@ export function Layout() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Outlet /> {/* 🔥 ICI: affichage des routes enfants */}
+        <Outlet />
       </main>
     </div>
   );

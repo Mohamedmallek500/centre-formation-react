@@ -2,6 +2,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider, useApp } from "./context/AppContext";
 import { Login } from "./components/Login";
+import { Register } from "./components/Register";
 import { Layout } from "./components/Layout";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { FormateurDashboard } from "./components/formateur/FormateurDashboard";
@@ -10,6 +11,7 @@ import { EtudiantsManager } from "./components/admin/EtudiantsManager";
 import ProtectedRoutes from "./ProtectedRoutes";
 import { JSX } from "react";
 import { FormateursManager } from "./components/admin/FormateursManager";
+import { CoursManager } from "./components/admin/CoursManager";
 
 // 🔁 Redirection selon rôle
 function RoleRedirect() {
@@ -42,6 +44,7 @@ export default function App() {
 
           {/* Public */}
           <Route path="/" element={<Login />} />
+          <Route path="/register" element={<Register />} />
 
           {/* Auth required */}
           <Route element={<ProtectedRoutes />}>
@@ -71,13 +74,25 @@ export default function App() {
               />
 
               <Route
-  path="/dashboardadmin/formateurs"
-  element={
-    <RequireRole allowed={["ADMIN"]}>
-      <FormateursManager />
-    </RequireRole>
-  }
-/>
+                path="/dashboardadmin/formateurs"
+                element={
+                  <RequireRole allowed={["ADMIN"]}>
+                    <FormateursManager />
+                  </RequireRole>
+                }
+              />
+
+
+              <Route
+                path="/dashboardadmin/cours"
+                element={
+                  <RequireRole allowed={["ADMIN"]}>
+                    <CoursManager />
+                  </RequireRole>
+                }
+              />
+
+
 
               {/* ================= FORMATEUR ================= */}
               <Route

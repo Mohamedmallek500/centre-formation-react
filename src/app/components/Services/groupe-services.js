@@ -22,6 +22,21 @@ const GroupeService = {
   // GET /api/groupes/{id}
   getById: (id) => {
     return axios.get(`/groupes/${id}`);
+  },
+
+  // 🔹 UPDATE
+  // PUT /api/groupes/{id}
+  modifier: (id, nom, sessionId) => {
+    return axios.put(`/groupes/${id}`, {
+      nom,
+      sessionId
+    });
+  },
+
+  // 🔹 DELETE
+  // DELETE /api/groupes/{id}
+  supprimer: (id) => {
+    return axios.delete(`/groupes/${id}`);
   }
 };
 

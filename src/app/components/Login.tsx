@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from './ui/card';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from './ui/alert';
 import { GraduationCap, AlertCircle } from 'lucide-react';
 import AuthService from './Services/authservices';
 import { useApp } from '../context/AppContext';
-import { useNavigate } from "react-router-dom"; // 🔥
+import { useNavigate, Link } from "react-router-dom"; // 🔥
 
 export function Login() {
   const [email, setEmail] = useState('');
@@ -27,6 +27,7 @@ export function Login() {
       const response = await AuthService.signin({ email, password });
 
       console.log("User connected:", response.data);
+      // Le cookie HTTP-only est automatiquement stocké par le navigateur
 
       // 🔥 Stocker l'utilisateur
       login(response.data);
@@ -34,7 +35,7 @@ export function Login() {
       // 🔁 Redirection selon le rôle
       const role = response.data.roles?.[0]; // ex: "ETUDIANT"
 
-      if (role === "ADMIN") navigate("/dashboardadmin/formateurs");
+      if (role === "ADMIN") navigate("/dashboardadmin");
       else if (role === "FORMATEUR") navigate("/dashboardformateur");
       else if (role === "ETUDIANT") navigate("/dashboardetudiant");
       else navigate("/");
@@ -103,6 +104,11 @@ export function Login() {
             </Button>
           </form>
         </CardContent>
+        <CardFooter className="justify-center">
+          <p className="text-sm text-gray-500">
+            Pas encore de compte ? <Link to="/register" className="text-blue-600 hover:underline">Créer un compte</Link>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   );

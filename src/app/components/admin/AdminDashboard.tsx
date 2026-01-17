@@ -9,7 +9,7 @@ import { CoursManager } from './CoursManager';
 import { InscriptionsManager } from './InscriptionsManager';
 import { NotesManager } from './NotesManager';
 import { SessionsManager } from './SessionsManager';
-import { SpecialitesManager } from './SpecialitesManager';
+import { SeancesManager } from './SeancesManager';
 import { GroupesManager } from './GroupesManager';
 import { PlanningManager } from './PlanningManager';
 
@@ -17,30 +17,32 @@ export function AdminDashboard() {
   const { state } = useApp();
   const [activeTab, setActiveTab] = useState('overview');
 
+
+
   const stats = [
-    { 
-      label: 'Étudiants', 
-      value: state.etudiants.length, 
-      icon: GraduationCap, 
-      color: 'bg-blue-500' 
+    {
+      label: 'Étudiants',
+      value: state.etudiants.length,
+      icon: GraduationCap,
+      color: 'bg-blue-500'
     },
-    { 
-      label: 'Formateurs', 
-      value: state.formateurs.length, 
-      icon: Users, 
-      color: 'bg-green-500' 
+    {
+      label: 'Formateurs',
+      value: state.formateurs.length,
+      icon: Users,
+      color: 'bg-green-500'
     },
-    { 
-      label: 'Cours', 
-      value: state.cours.length, 
-      icon: BookOpen, 
-      color: 'bg-purple-500' 
+    {
+      label: 'Cours',
+      value: state.cours.length,
+      icon: BookOpen,
+      color: 'bg-purple-500'
     },
-    { 
-      label: 'Inscriptions', 
-      value: state.inscriptions.filter(i => i.statut === 'active').length, 
-      icon: Award, 
-      color: 'bg-orange-500' 
+    {
+      label: 'Inscriptions',
+      value: state.inscriptions.filter(i => i.statut === 'active').length,
+      icon: Award,
+      color: 'bg-orange-500'
     }
   ];
 
@@ -81,9 +83,9 @@ export function AdminDashboard() {
             <Calendar className="w-4 h-4 mr-1" />
             Sessions
           </TabsTrigger>
-          <TabsTrigger value="specialites" className="text-xs sm:text-sm">
-            <FolderTree className="w-4 h-4 mr-1" />
-            Spécialités
+          <TabsTrigger value="seances" className="text-xs sm:text-sm">
+            <Calendar className="w-4 h-4 mr-1" />
+            Séances
           </TabsTrigger>
           <TabsTrigger value="groupes" className="text-xs sm:text-sm">
             <UsersRound className="w-4 h-4 mr-1" />
@@ -157,7 +159,7 @@ export function AdminDashboard() {
                         <span className="text-sm font-medium">{spec.nom}</span>
                         <div className="flex items-center space-x-2">
                           <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
+                            <div
                               className="h-full bg-blue-600"
                               style={{ width: `${(count / state.etudiants.length) * 100}%` }}
                             />
@@ -200,8 +202,8 @@ export function AdminDashboard() {
           <SessionsManager />
         </TabsContent>
 
-        <TabsContent value="specialites">
-          <SpecialitesManager />
+        <TabsContent value="seances">
+          <SeancesManager />
         </TabsContent>
 
         <TabsContent value="groupes">
