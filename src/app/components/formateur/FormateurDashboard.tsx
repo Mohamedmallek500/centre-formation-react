@@ -1,39 +1,65 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { useApp } from '../../context/AppContext';
-import { BookOpen, Users, BarChart3, Calendar } from 'lucide-react';
+import { BookOpen, Users, BarChart3, Calendar, Loader2 } from 'lucide-react';
 import { MesCours } from './MesCours';
 import { GestionNotes } from './GestionNotes';
 import { MonPlanning } from './MonPlanning';
+import { Cours, Seance } from '../../types';
+import FormateurService from '../Services/formateur-services';
+import SeanceService from '../Services/seance-services';
 
 export function FormateurDashboard() {
   const { state } = useApp();
   const [activeTab, setActiveTab] = useState('cours');
-  
-  const formateurId = state.currentUser?.id || '';
-  const mesCours = state.cours.filter(c => c.formateurId === formateurId);
-  const mesEtudiants = new Set(mesCours.flatMap(c => c.etudiants));
-  const mesSeances = state.seances.filter(s => 
-    mesCours.some(c => c.code === s.coursCode)
-  );
+  const [cours, setCours] = useState<Cours[]>([]);
+  const [seances, setSeances] = useState<Seance[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const currentUser = state.currentUser;
+  const formateurId = currentUser?.id;
+
+  useEffect(() => {
+    if (formateurId) {
+      loadData();
+    } else {
+      setLoading(false);
+    }
+  }, [formateurId]);
+
+  const loadData = async () => {
+    if (!formateurId) return;
+    
+    setLoading(true);
+    try {
+      // Charger les cours du formateur
+      const coursRes = await FormateurService.getCoursByFormateur(formateurId);
+      setCours(coursRes.data || []);
+      
+      // Charger les séances du formateur
+      const seancesRes = await SeanceService.getByFormateur(formateurId);
+      setSeances(seancesRes.data || []);
+    } catch (error) {
+      console.error('Erreur chargement données formateur:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Compter les séances à venir
+  const seancesAVenir = seances.filter(s => new Date(s.heureDebut) >= new Date()).length;
 
   const stats = [
     { 
       label: 'Mes cours', 
-      value: mesCours.length, 
+      value: cours.length, 
       icon: BookOpen, 
       color: 'bg-blue-500' 
     },
     { 
-      label: 'Étudiants', 
-      value: mesEtudiants.size, 
-      icon: Users, 
-      color: 'bg-green-500' 
-    },
-    { 
       label: 'Séances à venir', 
-      value: mesSeances.filter(s => new Date(s.date) >= new Date()).length, 
+      value: seancesAVenir, 
       icon: Calendar, 
       color: 'bg-purple-500' 
     }
@@ -43,11 +69,13 @@ export function FormateurDashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold text-gray-900">Espace Formateur</h2>
-        <p className="text-gray-500 mt-1">Gérez vos cours et vos étudiants</p>
+        <p className="text-gray-500 mt-1">
+          {currentUser ? `${currentUser.prenom} ${currentUser.nom}` : 'Gérez vos cours et vos étudiants'}
+        </p>
       </div>
 
       {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats.map((stat, index) => (
           <Card key={index}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -59,7 +87,9 @@ export function FormateurDashboard() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stat.value}</div>
+              <div className="text-3xl font-bold">
+                {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : stat.value}
+              </div>
             </CardContent>
           </Card>
         ))}
