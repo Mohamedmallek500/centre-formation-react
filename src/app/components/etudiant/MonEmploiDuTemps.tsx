@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { Badge } from '../ui/badge';
+import { Button } from '../ui/button';
 import { useApp } from '../../context/AppContext';
-import { Calendar, Loader2 } from 'lucide-react';
+import { Calendar, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Inscription, Seance } from '../../types';
 import InscriptionService from '../Services/inscription-services';
 import SeanceService from '../Services/seance-services';
+
+const DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
+const HOURS = Array.from({ length: 11 }, (_, i) => i + 8); // 8h to 18h
 
 export function MonEmploiDuTemps() {
   const { state } = useApp();
   const [seances, setSeances] = useState<Seance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentDate, setCurrentDate] = useState(new Date());
 
   const etudiantId = state.currentUser?.id;
 
@@ -54,32 +57,68 @@ export function MonEmploiDuTemps() {
     }
   };
 
-  // Extraire la date de heureDebut (format ISO)
-  const getDateFromSeance = (seance: Seance) => {
-    if (seance.date) return seance.date;
-    return seance.heureDebut?.split('T')[0] || '';
+  // Calculate start of current week (Monday)
+  const weekStart = useMemo(() => {
+    const d = new Date(currentDate);
+    const day = d.getDay();
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    d.setDate(diff);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, [currentDate]);
+
+  // Calculate end of week (Saturday)
+  const weekEnd = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 5);
+    d.setHours(23, 59, 59, 999);
+    return d;
+  }, [weekStart]);
+
+  // Filter seances for this week
+  const weekSeances = useMemo(() => {
+    return seances.filter(s => {
+      const d = new Date(s.heureDebut);
+      return d >= weekStart && d <= weekEnd;
+    });
+  }, [seances, weekStart, weekEnd]);
+
+  const nextWeek = () => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() + 7);
+    setCurrentDate(d);
   };
 
-  // Extraire l'heure de heureDebut et heureFin
-  const formatHeure = (datetime: string) => {
-    if (!datetime) return '';
-    if (datetime.includes('T')) {
-      return datetime.split('T')[1]?.substring(0, 5) || datetime;
-    }
-    return datetime;
+  const prevWeek = () => {
+    const d = new Date(currentDate);
+    d.setDate(d.getDate() - 7);
+    setCurrentDate(d);
   };
 
-  const seancesParDate = seances.reduce((acc, seance) => {
-    const date = getDateFromSeance(seance);
-    if (!date) return acc;
-    if (!acc[date]) {
-      acc[date] = [];
-    }
-    acc[date].push(seance);
-    return acc;
-  }, {} as Record<string, Seance[]>);
+  const getDaySeances = (dayIndex: number) => {
+    const targetDate = new Date(weekStart);
+    targetDate.setDate(targetDate.getDate() + dayIndex);
 
-  const dates = Object.keys(seancesParDate).sort();
+    return weekSeances.filter(s => {
+      const d = new Date(s.heureDebut);
+      return d.getDate() === targetDate.getDate() &&
+        d.getMonth() === targetDate.getMonth() &&
+        d.getFullYear() === targetDate.getFullYear();
+    });
+  };
+
+  const getPositionStyle = (seance: Seance) => {
+    const start = new Date(seance.heureDebut);
+    const end = new Date(seance.heureFin);
+
+    const startHour = start.getHours() + start.getMinutes() / 60;
+    const endHour = end.getHours() + end.getMinutes() / 60;
+
+    const top = ((startHour - 8) * 60) + 'px';
+    const height = ((endHour - startHour) * 60) + 'px';
+
+    return { top, height };
+  };
 
   return (
     <Card>
@@ -96,66 +135,108 @@ export function MonEmploiDuTemps() {
             <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
           </div>
         ) : (
-          <div className="space-y-6">
-            {dates.map(date => (
-              <div key={date}>
-                <h3 className="font-semibold mb-3 text-lg">
-                  {new Date(date).toLocaleDateString('fr-FR', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </h3>
-                
-                <div className="rounded-md border overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Heure</TableHead>
-                        <TableHead>Cours</TableHead>
-                        <TableHead>Formateur</TableHead>
-                        <TableHead>Salle</TableHead>
-                        <TableHead>Type</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {seancesParDate[date]
-                        .sort((a, b) => a.heureDebut.localeCompare(b.heureDebut))
-                        .map((seance) => {
-                          const cours = seance.cours;
-                          const formateur = cours?.formateur;
-                          
-                          return (
-                            <TableRow key={seance.id}>
-                              <TableCell className="font-medium">
-                                {formatHeure(seance.heureDebut)} - {formatHeure(seance.heureFin)}
-                              </TableCell>
-                              <TableCell>
-                                <div>
-                                  <div className="font-medium">{cours?.titre || '-'}</div>
-                                  <div className="text-sm text-gray-500">{cours?.code || '-'}</div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                {formateur ? `${formateur.prenom} ${formateur.nom}` : '-'}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="outline">{seance.salle}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">{seance.typeSeance}</Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                    </TableBody>
-                  </Table>
-                </div>
+          <div className="flex flex-col space-y-4">
+            {/* Header controls */}
+            <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg border">
+              <div className="flex items-center space-x-2">
+                <Calendar className="w-5 h-5 text-gray-500" />
+                <span className="font-semibold text-lg capitalize">
+                  {weekStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                </span>
+                <span className="text-gray-400 text-sm">
+                  (Semaine du {weekStart.toLocaleDateString('fr-FR', { day: 'numeric' })} au {weekEnd.toLocaleDateString('fr-FR', { day: 'numeric' })})
+                </span>
               </div>
-            ))}
+              <div className="flex space-x-2">
+                <Button variant="outline" size="icon" onClick={prevWeek}>
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <Button variant="outline" onClick={() => setCurrentDate(new Date())}>
+                  Aujourd'hui
+                </Button>
+                <Button variant="outline" size="icon" onClick={nextWeek}>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
 
-            {dates.length === 0 && (
+            {/* Calendar Grid */}
+            <div className="bg-white rounded-lg border shadow-sm overflow-auto flex">
+              {/* Time Column */}
+              <div className="w-16 flex-shrink-0 border-r bg-gray-50">
+                <div className="h-12 border-b"></div>
+                {HOURS.map(h => (
+                  <div key={h} className="h-[60px] border-b text-xs text-gray-400 flex items-start justify-center pt-1">
+                    {h}:00
+                  </div>
+                ))}
+              </div>
+
+              {/* Days Columns */}
+              <div className="flex-1 grid grid-cols-6 divide-x min-w-[720px]">
+                {DAYS.map((day, dayIndex) => (
+                  <div key={day} className="relative min-w-[120px]">
+                    {/* Header */}
+                    <div className="h-12 border-b bg-gray-50 flex items-center justify-center font-medium text-sm">
+                      {day} <span className="ml-1 text-gray-400 font-normal">
+                        {new Date(weekStart.getTime() + dayIndex * 86400000).getDate()}
+                      </span>
+                    </div>
+
+                    {/* Content Container */}
+                    <div className="relative h-[660px]">
+                      {/* Grid lines */}
+                      {HOURS.map(h => (
+                        <div 
+                          key={h} 
+                          className="h-[60px] border-b border-gray-100 box-border w-full absolute" 
+                          style={{ top: (h - 8) * 60 }}
+                        />
+                      ))}
+
+                      {/* Events */}
+                      {getDaySeances(dayIndex).map(seance => {
+                        const style = getPositionStyle(seance);
+                        const cours = seance.cours;
+                        const coursTitre = cours?.titre || 'Cours';
+                        const formateur = cours?.formateur;
+                        const formateurNom = formateur ? `${formateur.prenom} ${formateur.nom}` : '';
+
+                        return (
+                          <div
+                            key={seance.id}
+                            className={`absolute inset-x-1 rounded p-2 text-xs border overflow-hidden transition-all hover:z-10 hover:shadow-md cursor-pointer
+                              ${seance.typeSeance === 'CM' ? 'bg-blue-100 border-blue-200 text-blue-800' :
+                                seance.typeSeance === 'TD' ? 'bg-green-100 border-green-200 text-green-800' :
+                                  'bg-orange-100 border-orange-200 text-orange-800'}`}
+                            style={style}
+                            title={`${coursTitre} - ${seance.typeSeance}\n${formateurNom}\n${seance.salle}\n${new Date(seance.heureDebut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${new Date(seance.heureFin).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                          >
+                            <div className="font-bold truncate">{coursTitre}</div>
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="font-semibold opacity-75">{seance.typeSeance}</span>
+                              <span className="truncate max-w-[50%]">{seance.salle}</span>
+                            </div>
+                            {formateurNom && (
+                              <div className="text-[10px] font-medium mt-1 truncate">
+                                {formateurNom}
+                              </div>
+                            )}
+                            <div className="text-[10px] opacity-75 mt-0.5">
+                              {new Date(seance.heureDebut).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              -
+                              {new Date(seance.heureFin).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {seances.length === 0 && (
               <div className="text-center py-12 text-gray-500">
                 <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>Aucune séance planifiée</p>
